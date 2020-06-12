@@ -35,7 +35,7 @@ library(spectralGraphTopology)
 #' @export
 learn_laplacian_pgd_connected <- function(S, w0 = "naive", alpha = 0, sparsity_type = "none",
                                           eps = 1e-4, gamma = 2.001, eta = 1e-2, backtrack = TRUE,
-                                          maxiter = 10000, reltol = 1e-5, verbose = TRUE, ) {
+                                          maxiter = 10000, reltol = 1e-5, verbose = TRUE) {
   # number of nodes
   p <- nrow(S)
   Sinv <- MASS::ginv(S)
