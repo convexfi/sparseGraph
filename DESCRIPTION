@@ -1,0 +1,35 @@
+Package: sparseGraph
+Title: Estimating Graphs with Nonconvex, Sparse Promoting Regularizations
+Version: 0.1.0
+Description: 
+Authors@R: c(
+  person("Ze", "Vinicius", role = c("cre", "aut"), email = "jvmirca@gmail.com"),
+  person("Jiaxi", "Ying", role = "aut", email = "yingjiaxi@gmail.com"),
+  person(c("Daniel", "P."), "Palomar", role = "aut", email = "daniel.p.palomar@gmail.com")
+  )
+Maintainer: Ze Vinicius <jvmirca@gmail.com>
+URL: https://github.com/mirca/sparseGraph/,
+     https://mirca.github.io/sparseGraph,
+     https://www.danielppalomar.com
+BugReports: https://github.com/mirca/sparseGraph/issues
+Depends:
+License: GPL-3 | file LICENSE
+Encoding: UTF-8
+LazyData: true
+LinkingTo:
+    Rcpp,
+    RcppEigen
+Imports:
+    Rcpp,
+    MASS,
+    quadprog,
+    progress,
+    spectralGraphTopology
+RoxygenNote: 7.0.2
+Suggests:
+VignetteBuilder:
+    bookdown,
+    knitr,
+    prettydoc,
+    rmarkdown,
+    R.rsp
