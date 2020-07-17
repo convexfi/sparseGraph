@@ -1,7 +1,7 @@
 library(spectralGraphTopology)
 
 #' @title Learns sparse Laplacian matrix of a connected graph
-#' 
+#'
 #' Learns a connected graph via non-convex, sparse promoting regularization
 #' functions such as MCP, SCAD, and re-weighted l1-norm.
 #'
