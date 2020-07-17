@@ -45,7 +45,7 @@ learn_laplacian_pgd_connected <- function(S, w0 = "naive", alpha = 0, sparsity_t
   Lw <- L(w)
   H <- alpha * (diag(p) - p * J)
   Lw <- L(w)
-  K <- S + H
+  K <- S
   if (verbose)
     pb <- progress::progress_bar$new(format = "<:bar> :current/:total  eta: :eta",
                                      total = maxiter, clear = FALSE, width = 80)
