@@ -35,4 +35,4 @@ If you made use of this software please consider citing:
 
 -   J. Ying, J. V. de M. Cardoso, D. P. Palomar (2020). Does the l1-norm
     learn a sparse graphical model under Laplacian constraints?
-    (submitted 2020).
+    (<https://arxiv.org/abs/2006.14925>)\[<https://arxiv.org/abs/2006.14925>\].
