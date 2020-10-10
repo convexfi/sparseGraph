@@ -33,6 +33,10 @@ Citation
 
 If you made use of this software please consider citing:
 
+-   J. Ying, J. V. de M. Cardoso, D. P. Palomar (2020). Nonconvex Sparse
+    Graph Learning under Laplacian-structured Graphical Mode. Advances
+    in Neural Information Processing Systems (NeurIPS’20).
+
 -   J. Ying, J. V. de M. Cardoso, D. P. Palomar (2020). Does the l1-norm
     learn a sparse graphical model under Laplacian constraints?
-    (<https://arxiv.org/abs/2006.14925>)\[<https://arxiv.org/abs/2006.14925>\].
+    <https://arxiv.org/abs/2006.14925>.
