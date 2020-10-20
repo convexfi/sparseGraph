@@ -34,7 +34,7 @@ library(spectralGraphTopology)
 #' @author Ze Vinicius, Jiaxi Ying, and Daniel Palomar
 #' @export
 learn_laplacian_pgd_connected <- function(S, w0 = "naive", alpha = 0, sparsity_type = "none",
-                                          eps = 1e-4, gamma = 2.001, eta = 1e-2, backtrack = TRUE,
+                                          eps = 1e-4, gamma = 2.001, eta = 1e-2, q = 1, backtrack = TRUE,
                                           maxiter = 10000, reltol = 1e-5, verbose = TRUE) {
   # number of nodes
   p <- nrow(S)
@@ -52,7 +52,15 @@ learn_laplacian_pgd_connected <- function(S, w0 = "naive", alpha = 0, sparsity_t
   time_seq <- c(0)
   start_time <- proc.time()[3]
   for (i in 1:maxiter) {
-    gradient <- spectralGraphTopology:::Lstar(K - spectralGraphTopology:::inv_sympd(Lw + J))
+    w_prev <- w
+    tryCatch(
+      {gradient <- spectralGraphTopology:::Lstar(K - spectralGraphTopology:::inv_sympd(Lw + J))},
+        error = function(err) {
+          results <- list(laplacian = L(w_prev), adjacency = A(w_prev), maxiter = i,
+                     convergence = FALSE, elapsed_time = time_seq)
+          return(results)
+      }
+    )
     if (backtrack) {
       fun <- connected_pgd.obj(Lw = Lw, J = J, K = K)
       while(1) {
@@ -86,7 +94,7 @@ learn_laplacian_pgd_connected <- function(S, w0 = "naive", alpha = 0, sparsity_t
       diag(H) <- rep(0, p)
       K <- S + H
     } else if (sparsity_type == "re-l1") {
-      K <- S + H / (-Lw + eps)
+      K <- S + H / ((-Lw + eps) ^ q)
     } else if (sparsity_type == "scad") {
       H <- -alpha * (Lw >= - alpha)
       H <- H + (-gamma * alpha - Lw) / (gamma - 1) * (Lw > -gamma*alpha) * (Lw < -alpha)
@@ -101,7 +109,9 @@ learn_laplacian_pgd_connected <- function(S, w0 = "naive", alpha = 0, sparsity_t
 
 
 connected_pgd.obj <- function(Lw, J, K) {
-  eigvals <- eigen(Lw + J, symmetric = TRUE, only.values = TRUE)$values
-  eigvals <- eigvals[eigvals > 1e-8]
-  return(sum(diag(Lw %*% K)) - sum(log(eigvals)))
+  #eigvals <- eigen(Lw + J, symmetric = TRUE, only.values = TRUE)$values
+  #eigvals <- eigvals[eigvals > 1e-8]
+  #return(sum(diag(Lw %*% K)) - sum(log(eigvals)))
+  chol_factor <- chol(Lw + J)
+  return(sum(diag(Lw %*% K)) - 2*sum(log(diag(chol_factor))))
 }
