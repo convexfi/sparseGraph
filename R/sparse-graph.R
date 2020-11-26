@@ -40,7 +40,7 @@ learn_laplacian_pgd_connected <- function(S, w0 = "naive", alpha = 0, sparsity_t
   p <- nrow(S)
   Sinv <- MASS::ginv(S)
   # initial estimate
-  w <- spectralGraphTopology:::w_init(w0, Sinv)
+  w <- spectralGraphTopology:::w_init(w0, Sinv) + 1e-4
   J <- matrix(1, p, p) / p
   Lw <- L(w)
   H <- alpha * (diag(p) - p * J)
