@@ -52,14 +52,19 @@ learn_laplacian_pgd_connected <- function(S, w0 = "naive", alpha = 0, sparsity_t
     pb <- progress::progress_bar$new(format = "<:bar> :current/:total  eta: :eta",
                                      total = maxiter, clear = FALSE, width = 80)
   time_seq <- c(0)
+  relerror_seq <- c()
   start_time <- proc.time()[3]
   for (i in 1:maxiter) {
     w_prev <- w
     tryCatch(
       {gradient <- spectralGraphTopology:::Lstar(K - spectralGraphTopology:::inv_sympd(Lw + J))},
         error = function(err) {
-          results <- list(laplacian = L(w_prev), adjacency = A(w_prev), maxiter = i,
-                     convergence = FALSE, elapsed_time = time_seq)
+          results <- list(laplacian = L(w_prev),
+                          adjacency = A(w_prev),
+                          maxiter = i,
+                          convergence = FALSE,
+                          elapsed_time = time_seq,
+                          optimization_error = relerror_seq)
           return(results)
       }
     )
@@ -69,10 +74,14 @@ learn_laplacian_pgd_connected <- function(S, w0 = "naive", alpha = 0, sparsity_t
         wi <- w - eta * gradient
         wi[wi < 0] <- 0
         # compute the objective function at the updated value of w
-        fun_t <- connected_pgd.obj(Lw = L(wi), J = J, K = K)
+        Lwi <- L(wi)
+        fun_t <- connected_pgd.obj(Lw = Lwi, J = J, K = K)
+        eigvals <- eigen(Lwi, symmetric = TRUE, only.values = TRUE)$values
+        n_zero_eigvals <- sum(eigvals < 1e-8)
         # check whether the previous value of the objective function is
         # smaller than the current one
-        if (fun < fun_t - sum(gradient * (wi - w)) - (.5/eta)*norm(wi - w, '2')^2) {
+        if ((fun < fun_t - sum(gradient * (wi - w)) - (.5/eta)*norm(wi - w, '2')^2)
+            | (n_zero_eigvals > 1)) {
           eta <- .5 * eta
         } else {
           eta <- 2 * eta
@@ -85,7 +94,9 @@ learn_laplacian_pgd_connected <- function(S, w0 = "naive", alpha = 0, sparsity_t
     }
     if (verbose)
       pb$tick()
-    has_converged <- (norm(L(wi) - Lw, 'F') / norm(Lw, 'F') < reltol) && (i > 1)
+    relerror <- norm(L(wi) - Lw, 'F') / norm(Lw, 'F')
+    has_converged <- (relerror < reltol) && (i > 1)
+    relerror_seq <- c(relerror_seq, relerror)
     time_seq <- c(time_seq, proc.time()[3] - start_time)
     if (has_converged)
       break
@@ -104,8 +115,12 @@ learn_laplacian_pgd_connected <- function(S, w0 = "naive", alpha = 0, sparsity_t
       K <- S + H
     }
   }
-  results <- list(laplacian = L(wi), adjacency = A(wi), maxiter = i,
-                  convergence = has_converged, elapsed_time = time_seq)
+  results <- list(laplacian = L(wi),
+                  adjacency = A(wi),
+                  maxiter = i,
+                  convergence = has_converged,
+                  elapsed_time = time_seq,
+                  optimization_error = relerror_seq)
   return(results)
 }
 
