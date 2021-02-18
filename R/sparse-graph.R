@@ -53,6 +53,7 @@ learn_laplacian_pgd_connected <- function(S, w0 = "naive", alpha = 0, sparsity_t
                                      total = maxiter, clear = FALSE, width = 80)
   time_seq <- c(0)
   relerror_seq <- c()
+  eta_seq <- c()
   start_time <- proc.time()[3]
   for (i in 1:maxiter) {
     w_prev <- w
@@ -64,24 +65,25 @@ learn_laplacian_pgd_connected <- function(S, w0 = "naive", alpha = 0, sparsity_t
                           maxiter = i,
                           convergence = FALSE,
                           elapsed_time = time_seq,
-                          optimization_error = relerror_seq)
+                          optimization_error = relerror_seq,
+                          learning_rates = eta_seq)
           return(results)
       }
     )
     if (backtrack) {
-      fun <- connected_pgd.obj(Lw = Lw, J = J, K = K)
+      fun <- mle_pgd.obj(Lw = Lw, J = J, K = K)$obj_fun
       while(1) {
         wi <- w - eta * gradient
         wi[wi < 0] <- 0
         # compute the objective function at the updated value of w
         Lwi <- L(wi)
-        fun_t <- connected_pgd.obj(Lw = Lwi, J = J, K = K)
-        eigvals <- eigen(Lwi, symmetric = TRUE, only.values = TRUE)$values
-        n_zero_eigvals <- sum(eigvals < 1e-8)
+        aux <- mle_pgd.obj(Lw = Lwi, J = J, K = K)
+        fun_t <- aux$obj_fun
+        is_disconnected <- aux$is_disconnected
         # check whether the previous value of the objective function is
         # smaller than the current one
         if ((fun < fun_t - sum(gradient * (wi - w)) - (.5/eta)*norm(wi - w, '2')^2)
-            | (n_zero_eigvals > 1)) {
+            | is_disconnected) {
           eta <- .5 * eta
         } else {
           eta <- 2 * eta
@@ -97,6 +99,7 @@ learn_laplacian_pgd_connected <- function(S, w0 = "naive", alpha = 0, sparsity_t
     relerror <- norm(L(wi) - Lw, 'F') / norm(Lw, 'F')
     has_converged <- (relerror < reltol) && (i > 1)
     relerror_seq <- c(relerror_seq, relerror)
+    eta_seq <- c(eta_seq, eta)
     time_seq <- c(time_seq, proc.time()[3] - start_time)
     if (has_converged)
       break
@@ -120,15 +123,18 @@ learn_laplacian_pgd_connected <- function(S, w0 = "naive", alpha = 0, sparsity_t
                   maxiter = i,
                   convergence = has_converged,
                   elapsed_time = time_seq,
-                  optimization_error = relerror_seq)
+                  optimization_error = relerror_seq,
+                  learning_rates = eta_seq)
   return(results)
 }
 
 
-connected_pgd.obj <- function(Lw, J, K) {
-  eigvals <- eigen(Lw + J, symmetric = TRUE, only.values = TRUE)$values
-  eigvals <- eigvals[eigvals > 1e-8]
-  return(sum(diag(Lw %*% K)) - sum(log(eigvals)))
-  #chol_factor <- chol(Lw + J)
-  #return(sum(diag(Lw %*% K)) - 2*sum(log(diag(chol_factor))))
+mle_pgd.obj <- function(Lw, J, K) {
+   chol_status <- try(chol_factor <- chol(Lw + J), silent = TRUE)
+   chol_error <- ifelse(class(chol_status) == "try-error", TRUE, FALSE)
+   if (chol_error[1]) {
+     return(list(obj_fun = 1e16, is_disconnected = TRUE))
+   } else {
+      return(list(obj_fun = sum(Lw*K) - 2*sum(log(diag(chol_factor))), is_disconnected = FALSE))
+   }
 }
