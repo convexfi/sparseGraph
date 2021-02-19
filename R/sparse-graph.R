@@ -120,6 +120,7 @@ learn_laplacian_pgd_connected <- function(S, w0 = "naive", alpha = 0, sparsity_t
   }
   results <- list(laplacian = L(wi),
                   adjacency = A(wi),
+                  obj_fun = mle_pgd.obj(Lw, J, K)$obj_fun,
                   maxiter = i,
                   convergence = has_converged,
                   elapsed_time = time_seq,
