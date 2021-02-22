@@ -7,11 +7,7 @@ library(spectralGraphTopology)
 #'
 #' @param S a pxp sample covariance/correlation matrix, where p is the number
 #'        of nodes of the graph
-#' @param w0 initial estimate for the weight vector the graph or a string
-#'        selecting an appropriate method. Available methods are: "qp": finds w0
-#'        that minimizes ||ginv(S) - L(w0)||_F, w0 >= 0; "naive": takes w0 as
-#'        the negative of the off-diagonal elements of the pseudo inverse,
-#'        setting to 0 any elements s.t. w0 < 0
+#' @param w0 initial estimate for the weight vector the graph.
 #' @param alpha hyperparameter to control the level of sparsiness of the
 #'        estimated graph
 #' @param sparsity_type type of non-convex sparsity regularization. Available
@@ -33,20 +29,40 @@ library(spectralGraphTopology)
 #' \item{\code{elapsed_time}}{elapsed time recorded at every iteration}
 #' @author Ze Vinicius, Jiaxi Ying, and Daniel Palomar
 #' @export
-learn_laplacian_pgd_connected <- function(S, w0 = "naive", alpha = 0, sparsity_type = "none",
+learn_laplacian_pgd_connected <- function(S, w0 = NULL, alpha = 0, sparsity_type = "none",
                                           eps = 1e-4, gamma = 2.001, q = 1, backtrack = TRUE,
                                           maxiter = 10000, reltol = 1e-5, verbose = TRUE) {
   # number of nodes
   p <- nrow(S)
-  Sinv <- MASS::ginv(S)
-  # initial estimate
-  w <- spectralGraphTopology:::w_init(w0, Sinv) + 1e-4
   J <- matrix(1, p, p) / p
+  Sinv <- MASS::ginv(S)
+	# use safe initial learning rate
+	eta <- 1 / (2*p)
+  if (is.null(w0)) {
+    w <- spectralGraphTopology:::Linv(Sinv)
+    w[w < 0] <- 0
+    w <- compute_initial_point(w, Sinv, eta)
+  } else {
+    w <- w0
+    if(length(w) != .5 * p * (p-1)) stop(paste("dimension of the initial point must be ", .5 * p * (p-1)))
+    if(any(w < 0)) stop("initial point must be nonnegative.")
+    chol_status <- try(chol_factor <- chol(L(w) + J), silent = TRUE)
+    chol_error <- ifelse(class(chol_status) == "try-error", TRUE, FALSE)
+    if(chol_error[1]) stop("initial point provided must be a connected graph.")
+  }
   Lw <- L(w)
-  H <- alpha * (diag(p) - p * J)
-  # use safe initial learning rate
-  eta <- 1 / (2*p)
-  Lw <- L(w)
+  if (sparsity_type == "mcp") {
+    H <- -(alpha + Lw / gamma) * (Lw >= -alpha*gamma)
+    diag(H) <- rep(0, p)
+    K <- S + H
+  } else if (sparsity_type == "re-l1") {
+    K <- S + H / ((-Lw + eps) ^ q)
+  } else if (sparsity_type == "scad") {
+    H <- -alpha * (Lw >= - alpha)
+    H <- H + (-gamma * alpha - Lw) / (gamma - 1) * (Lw > -gamma*alpha) * (Lw < -alpha)
+    diag(H) <- rep(0, p)
+    K <- S + H
+  }
   K <- S + H
   if (verbose)
     pb <- progress::progress_bar$new(format = "<:bar> :current/:total  eta: :eta",
@@ -120,7 +136,7 @@ learn_laplacian_pgd_connected <- function(S, w0 = "naive", alpha = 0, sparsity_t
   }
   results <- list(laplacian = L(wi),
                   adjacency = A(wi),
-                  obj_fun = mle_pgd.obj(Lw, J, K)$obj_fun,
+#                  obj_fun = nonconvex.obj(L(wi), J, S, alpha, gamma, sparsity_type),
                   maxiter = i,
                   convergence = has_converged,
                   elapsed_time = time_seq,
@@ -131,11 +147,34 @@ learn_laplacian_pgd_connected <- function(S, w0 = "naive", alpha = 0, sparsity_t
 
 
 mle_pgd.obj <- function(Lw, J, K) {
-   chol_status <- try(chol_factor <- chol(Lw + J), silent = TRUE)
-   chol_error <- ifelse(class(chol_status) == "try-error", TRUE, FALSE)
-   if (chol_error[1]) {
-     return(list(obj_fun = 1e16, is_disconnected = TRUE))
-   } else {
-      return(list(obj_fun = sum(Lw*K) - 2*sum(log(diag(chol_factor))), is_disconnected = FALSE))
-   }
+  chol_status <- try(chol_factor <- chol(Lw + J), silent = TRUE)
+  chol_error <- ifelse(class(chol_status) == "try-error", TRUE, FALSE)
+  if (chol_error[1]) {
+    return(list(obj_fun = 1e16, is_disconnected = TRUE))
+  } else {
+     return(list(obj_fun = sum(Lw*K) - 2*sum(log(diag(chol_factor))), is_disconnected = FALSE))
+  }
+}
+
+
+#nonconvex.obj <- function(Lw, J, S, alpha, gamma, sparsity_type) {
+#  chol_factor <- chol(Lw + J)
+#  if (sparsity_type == "mcp") {
+#    mask <- (Lw >= -alpha*gamma)
+#    H <- (-alpha * Lw  - .5 * Lw^2 / gamma) * mask + (.5 * gamma * alpha ^ 2) * (!mask)
+#    diag(H) <- rep(0, nrow(H))
+#  }
+#  return(sum(Lw * S) - 2*sum(log(diag(chol_factor))) + sum(H))
+#}
+
+compute_initial_point <- function(w, Sinv, eta) {
+  for (i in c(1:100)) {
+    grad <- spectralGraphTopology:::Lstar(L(w) - Sinv)
+    wi <- w - eta * grad
+    wi[wi < 0] <- 0
+    if (norm(w - wi, '2') / norm(w, '2') < 1e-4)
+      break
+    w <- wi
+  }
+  return(w + 1e-4)
 }
