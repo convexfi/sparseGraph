@@ -56,6 +56,7 @@ learn_laplacian_pgd_connected <- function(S, w0 = NULL, alpha = 0, sparsity_type
     diag(H) <- rep(0, p)
     K <- S + H
   } else if (sparsity_type == "re-l1") {
+    H <- alpha * (diag(p) - p * J)
     K <- S + H / ((-Lw + eps) ^ q)
   } else if (sparsity_type == "scad") {
     H <- -alpha * (Lw >= - alpha)
