@@ -29,6 +29,7 @@ library(spectralGraphTopology)
 #' \item{\code{elapsed_time}}{elapsed time recorded at every iteration}
 #' @author Ze Vinicius, Jiaxi Ying, and Daniel Palomar
 #' @export
+#' @import spectralGraphTopology
 learn_laplacian_pgd_connected <- function(S, w0 = NULL, alpha = 0, sparsity_type = "none",
                                           eps = 1e-4, gamma = 2.001, q = 1, backtrack = TRUE,
                                           maxiter = 10000, reltol = 1e-5, verbose = TRUE) {
